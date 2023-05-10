@@ -1,0 +1,18 @@
+{
+    "name": "iniznet/petty-framework",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "iniznet",
+            "email": "iniznet@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Petty\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "require": {}
+}
