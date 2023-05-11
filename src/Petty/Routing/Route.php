@@ -7,8 +7,6 @@ class Route
 	use Concerns\Responses;
 
 	private static array $routes = [];
-	private static string|null $currentUri = null;
-	private static string|null $controller = null;
 	private static array $middlewares = [];
 	
 	public static array $verbs = [
@@ -39,7 +37,7 @@ class Route
 	 */
 
 	
-	public static function add(string|array $methods, string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function add(string|array $methods, string $uri, array|string|callable|null $action): self
 	{
 		$methods = is_array($methods) ? $methods : [$methods];
 
@@ -51,17 +49,6 @@ class Route
 			];
 		}
 
-		if (count(self::$middlewares) > 0) {
-			$middlewares = array_merge($middlewares, self::$middlewares[self::$currentUri]);
-		}
-
-		if (self::$controller !== null) {
-			$action = [
-				'controller' => self::$controller,
-				'method' => $action
-			];
-		}
-
 		foreach ($methods as $method) {
 			if (!in_array($method, self::$verbs)) {
 				throw new \Exception("Invalid route method: {$method}");
@@ -69,68 +56,48 @@ class Route
 
 			self::$routes[$method][$uri] = [
 				'action' => $action,
-				'middlewares' => $middlewares
+				'middlewares' => self::$middlewares
 			];
-
-			self::$currentUri = $uri;
 		}
 
-		self::$currentUri = null;
-		self::$controller = null;
 		self::$middlewares = [];
 
 		return new self;
 	}
 
-	public static function get(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function get(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('GET', $uri, $action, $middlewares);
+		return self::add('GET', $uri, $action);
 	}
 
-	public static function post(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function post(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('POST', $uri, $action, $middlewares);
+		return self::add('POST', $uri, $action);
 	}
 	
-	public static function put(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function put(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('PUT', $uri, $action, $middlewares);
+		return self::add('PUT', $uri, $action);
 	}
 
-	public static function delete(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function delete(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('DELETE', $uri, $action, $middlewares);
+		return self::add('DELETE', $uri, $action);
 	}
 
-	public static function patch(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function patch(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('PATCH', $uri, $action, $middlewares);
+		return self::add('PATCH', $uri, $action);
 	}
 
-	public static function options(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function options(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('OPTIONS', $uri, $action, $middlewares);
+		return self::add('OPTIONS', $uri, $action);
 	}
 
-	public static function any(string $uri, array|string|callable|null $action, array $middlewares = []): self
+	public static function any(string $uri, array|string|callable|null $action): self
 	{
-		return self::add('ANY', $uri, $action, $middlewares);
-	}
-
-	public static function controller(array|string|null $controller, array $middlewares = []): self
-	{
-		if (is_string($controller) && strpos($controller, '@') !== false) {
-			$segments = explode('@', $controller);
-			$controller = [
-				'controller' => $segments[0],
-				'method' => $segments[1]
-			];
-		}
-
-		self::$controller = $controller;
-		self::$middlewares[self::$currentUri] = $middlewares;
-
-		return new self;
+		return self::add('ANY', $uri, $action);
 	}
 
 	public static function group(callable $callback): self
@@ -142,12 +109,7 @@ class Route
 
 	public static function middleware(string|array $middlewares): self
 	{
-		if (self::$currentUri === '') {
-			throw new \Exception('Cannot add middleware to a unspecified route');
-		}
-
-		self::$middlewares[self::$currentUri] = is_array($middlewares) ? $middlewares : [$middlewares];
-
+		self::$middlewares = is_array($middlewares) ? $middlewares : [$middlewares];
 		return new self;
 	}
 
@@ -157,6 +119,7 @@ class Route
 		$uri = parse_url($uri, PHP_URL_PATH);
 		$uri = explode('?', $uri)[0];
 		$uri = trim($uri, '/');
+		$uri = $uri ?: '/';
 		$method = $_SERVER['REQUEST_METHOD'];
 
 		if (!array_key_exists($method, self::$routes)) {
@@ -205,14 +168,6 @@ class Route
 		if (is_array($action)) {
 			$controller = new $action['controller'];
 			$method = $action['method'];
-			$controller->$method();
-			exit;
-		}
-
-		if (is_string($action)) {
-			$segments = explode('@', $action);
-			$controller = new $segments[0];
-			$method = $segments[1];
 			$controller->$method();
 			exit;
 		}
