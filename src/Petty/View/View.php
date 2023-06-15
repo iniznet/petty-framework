@@ -8,7 +8,9 @@ class View
 
 	public static function render(string $view, array $data = []): void
 	{
-		$view = self::$basePath . '/' . $view . '.php';
+		$view = self::$basePath . '/' . $view;
+		$view = str_replace('.', '/', $view);
+		$view .= '.php';
 
 		if (!file_exists($view)) {
 			throw new \Exception('View not found');
@@ -18,7 +20,6 @@ class View
 		extract($data);
 		include_once $view;
 		$content = ob_get_clean();
-		ob_end_clean();
 
 		echo $content ?: '';
 	}

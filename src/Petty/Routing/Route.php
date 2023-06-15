@@ -37,9 +37,11 @@ class Route
 	 */
 
 	
-	public static function add(string|array $methods, string $uri, array|string|callable|null $action): self
+	public static function add(string|array $methods, string $uri, array|string|callable|null $action, array $middlewares = []): self
 	{
 		$methods = is_array($methods) ? $methods : [$methods];
+		$uri = trim($uri, '/');
+		$uri = $uri ?: '/';
 
 		if (is_string($action) && strpos($action, '@') !== false) {
 			$segments = explode('@', $action);
@@ -49,6 +51,17 @@ class Route
 			];
 		}
 
+		if (is_array($action)) {
+			$action = [
+				'controller' => $action[0],
+				'method' => $action[1]
+			];
+		}
+
+		if (self::$middlewares) {
+			$middlewares = array_merge($middlewares, self::$middlewares);
+		}
+
 		foreach ($methods as $method) {
 			if (!in_array($method, self::$verbs)) {
 				throw new \Exception("Invalid route method: {$method}");
@@ -56,11 +69,10 @@ class Route
 
 			self::$routes[$method][$uri] = [
 				'action' => $action,
-				'middlewares' => self::$middlewares
+				'middlewares' => $middlewares,
+				'uri' => $uri,
 			];
 		}
-
-		self::$middlewares = [];
 
 		return new self;
 	}
@@ -104,6 +116,10 @@ class Route
 	{
 		$callback();
 
+		if (self::$middlewares) {
+			self::$middlewares = [];
+		}
+
 		return new self;
 	}
 
@@ -143,33 +159,27 @@ class Route
 			foreach ($middlewares as $middleware) {
 				$middleware = new $middleware;
 				$middleware->handle(function () use ($action) {
-					self::handle($action);
+					self::handleAction($action);
 				});
 			}
 		} else {
-			self::handle($action);
+			self::handleAction($action);
 		}
-
-		self::response([
-			'status' => 404,
-			'message' => 'Not found'
-		], 404);
-
-		exit;
 	}
 
-	private static function handle(array $action): void
+	public static function getRoutes(): array
+	{
+		return self::$routes;
+	}
+
+	private static function handleAction(\Closure|array $action): void
 	{
 		if (is_callable($action)) {
 			$action();
-			exit;
-		}
-
-		if (is_array($action)) {
+		} else {
 			$controller = new $action['controller'];
 			$method = $action['method'];
 			$controller->$method();
-			exit;
 		}
 	}
 }
