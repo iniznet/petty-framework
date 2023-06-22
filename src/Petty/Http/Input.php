@@ -133,4 +133,20 @@ class Input
 
         return $_FILES;
     }
+
+	public static function validate(array $fields): Validator
+	{
+		$inputs = [];
+
+		foreach ($fields as $field => $rules) {
+			$inputs[$field] = self::get($field) ?: self::post($field) ?: self::put($field);
+		}
+
+		return Validator::validate($fields, $inputs);
+	}
+
+	public function __get($name)
+	{
+		return self::get($name) ?: self::post($name) ?: self::put($name);
+	}
 }
