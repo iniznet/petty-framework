@@ -4,7 +4,7 @@ namespace Petty\Routing;
 
 use Petty\Http\Input;
 
-class BaseController
+class Controller
 {
 	protected Input $input;
 
