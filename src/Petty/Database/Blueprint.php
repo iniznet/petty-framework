@@ -11,11 +11,11 @@ class Blueprint
 	protected $table;
 	protected $columns = [];
 	protected $primary = null;
-	protected $foreign = null;
-	protected $references = null;
-	protected $on = null;
-	protected $onDelete = null;
-	protected $onUpdate = null;
+	protected $foreign = [];
+	protected $references = [];
+	protected $on = [];
+	protected $onDelete = [];
+	protected $onUpdate = [];
 	protected $unique = null;
 	protected $index = null;
 	protected $default = null;
@@ -283,31 +283,31 @@ class Blueprint
 
 	public function foreign(string $column): Blueprint
 	{
-		$this->foreign = $column;
+		$this->foreign[] = $column;
 		return $this;
 	}
 
 	public function references(string $column): Blueprint
 	{
-		$this->references = $column;
+		$this->references[] = $column;
 		return $this;
 	}
 
 	public function on(string $table): Blueprint
 	{
-		$this->on = $table;
+		$this->on[] = $table;
 		return $this;
 	}
 
 	public function onDelete(string $action): Blueprint
 	{
-		$this->onDelete = $action;
+		$this->onDelete[] = $action;
 		return $this;
 	}
 
 	public function onUpdate(string $action): Blueprint
 	{
-		$this->onUpdate = $action;
+		$this->onUpdate[] = $action;
 		return $this;
 	}
 
@@ -486,15 +486,21 @@ class Blueprint
 		if ($this->primary) {
 			$sql .= ', PRIMARY KEY (' . $this->primary . ')';
 		}
+
 		if ($this->foreign) {
-			$sql .= ', FOREIGN KEY (' . $this->foreign . ') REFERENCES ' . $this->on . '(' . $this->references . ')';
+			$foreigns = [];
+			for ($i = 0; $i < count($this->foreign); $i++) {
+				$foreign = 'FOREIGN KEY (' . $this->foreign[$i] . ')';
+				$references = ' REFERENCES `' . $this->on[$i] . '`(' . $this->references[$i] . ')';
+				$onDelete = isset($this->onDelete[$i]) ? ' ON DELETE ' . $this->onDelete[$i] : '';
+				$onUpdate = isset($this->onUpdate[$i]) ? ' ON UPDATE ' . $this->onUpdate[$i] : '';
+
+				$foreigns[] = $foreign . $references . $onDelete . $onUpdate;
+			}
+
+			$sql .= ', ' . implode(', ', $foreigns);
 		}
-		if ($this->onDelete) {
-			$sql .= ' ON DELETE ' . $this->onDelete;
-		}
-		if ($this->onUpdate) {
-			$sql .= ' ON UPDATE ' . $this->onUpdate;
-		}
+
 		if ($this->unique) {
 			$sql .= ', UNIQUE (' . $this->unique . ')';
 		}
@@ -527,7 +533,13 @@ class Blueprint
 	{
 		$sql = $this->build();
 		// set connection from Database class
-		$this->connection->exec($sql);
+		try {
+			$this->connection->exec($sql);
+		} catch (\PDOException $e) {
+			echo $e->getMessage() . PHP_EOL;
+			echo $sql . PHP_EOL;
+			exit;
+		}
 	}
 
 	public function create()
