@@ -8,8 +8,8 @@ class View
 
 	public static function render(string $view, array $data = []): void
 	{
-		$view = self::$basePath . '/' . $view;
 		$view = str_replace('.', '/', $view);
+		$view = self::$basePath . '/' . $view;
 		$view .= '.php';
 
 		if (!file_exists($view)) {
